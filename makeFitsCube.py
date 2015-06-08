@@ -12,6 +12,7 @@ To do list:
 import optparse
 import glob
 import os
+import sys
 try: import numpy as np
 except ImportError: raise Exception('Unable to import Numpy')
 try: import psutil
@@ -34,10 +35,11 @@ def checkFitsShape(fitsList):
     for i, name in enumerate(fitsList):
         if i == 0:
             templateShape = pf.open(name, readonly=True)[0].data[0].shape
+            templateSize  = pf.open(name, readonly=True)[0].data[0].nbytes
         elif templateShape == pf.open(name, readonly=True)[0].data[0].shape: pass
         else:
             raise Exception('Fits file {} has an incompatible shape'.format(name))
-    return templateShape
+    return templateShape, templateSize
 
 def main(options):
     # Check user input
@@ -58,14 +60,21 @@ def main(options):
     print 'INFO: Identified {} fits files from {} files selected by input string'.\
           format(len(validFitsList), len(fileList))
     
+    if len(validFitsList) == 0:
+        raise Exception('No valid fits files were selected by the glob string')
+    
     # Check if the list of supplied fits files have the same shape
-    shape = checkFitsShape(validFitsList)
-    print 'All fits files have shape {}'.format(shape)
-    # Estimate the size requirements for the selected list of fits files
-    #totPixels = 0
-    #for name in validFitsList:
-        #totPixels += getNumOfPixels(name)
-        #getNumOfPixels(name)
+    shape, fitsSize = checkFitsShape(validFitsList)
+    print 'INFO: All fits files have shape {}'.format(shape)
+    totalArraySize = fitsSize*len(validFitsList)/(1024*1024)
+    print 'INFO: Total required memory is {} MB'.format(totalArraySize)
+
+    # If the required memory is smaller than total physical memory, report error
+    if options.mmap: pass
+    else:
+        if totalArraySize > availPhysMem:
+            raise Exception('Required memory is greater than available memory. Run with flag -m.')
+        
     
 
 if __name__ == '__main__':
