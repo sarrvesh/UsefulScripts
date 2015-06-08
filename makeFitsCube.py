@@ -7,6 +7,7 @@ This script is intended for merging channel maps into a FITS cube.
 Written by Sarrvesh S. Sridhar
 
 To do list:
+* Change all pyFits dependencies to AstroPy
 """
 import optparse
 try: import psutil
