@@ -48,9 +48,10 @@ def checkFitsShape(fitsList):
             raise Exception('Fits file {} has an incompatible shape'.format(name))
     return templateShape
 
-def concatenateWithMemMap(validFitsList, shape, memMapName):
+def concatenateWithMemMap(validFitsList, shape, memMapName, FLAG):
     """
-    Concatenate a given list of fits files into a single cube using memory map
+    Concatenate a given list of fits files into a single cube using memory map.
+    Return the concatenated array and frequency list
     """
     concatCube = np.memmap(memMapName, dtype='float32', mode='w+',\
                            shape=(1, len(validFitsList), shape[-2], shape[-1]))
@@ -58,11 +59,12 @@ def concatenateWithMemMap(validFitsList, shape, memMapName):
     for i, name in enumerate(validFitsList):
         tempData = pf.open(name, readonly=True)[0].data[0]
         tempHead = pf.open(name, readonly=True)[0].header
+        freqList.append(tempHead[FLAG])
         if len(shape) == 3:
             concatCube[0, i, :] = tempData[0, :]
         if len(shape) == 4:
             concatCube[0, i, :] = tempData[0, 0, :]
-    return concatCube
+    return concatCube, freqList
 
 def main(options):
     """
@@ -91,8 +93,19 @@ def main(options):
     print 'INFO: All fits files have shape {}'.format(shape)
     if len(shape) not in [3, 4]:
         raise Exception('Fits files have unknown shape')
-
-    finalCube = concatenateWithMemMap(validFitsList, shape, memMapName)
+    
+    # Merge the cubes
+    if options.restfrq:
+        FLAG = 'RESTFREQ'
+    else:
+        FLAG = 'CRVAL3'
+    finalCube, freqList = concatenateWithMemMap(validFitsList, shape, memMapName, FLAG)
+    
+    # Write the frequency list to disk
+    f = open(options.freq, "w")
+    for line in freqList:
+        f.write(str(line)+'\n')
+    f.close()
 
     # Get a template header from a fits file
     header = pf.open(validFitsList[0], readonly=True)[0].header
@@ -110,5 +123,8 @@ if __name__ == '__main__':
     opt.add_option('-f', '--freq',
                    help='Filename to write the frequency list [default: frequency.txt]',
                    default='frequency.txt')
+    opt.add_option('-r', '--restfrq', help='Frequency is stored in RESTFRQ '+
+                   'instead of CRVAL3 [default: False]', default=False, 
+                   action='store_true')
     inOpts, arguments = opt.parse_args()
     main(inOpts)
