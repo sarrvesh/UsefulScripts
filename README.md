@@ -3,3 +3,7 @@
     
 * getRMSF.py:
     Plots the Rotation Measure Spread Function for a given list of frequencies.
+    
+* makeRMErrorMap.py
+
+* getSpecIndex.py
