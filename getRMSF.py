@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 """
 getRMSF.py
 
@@ -7,6 +7,8 @@ list of frequencies.
 
 Written by Sarrvesh S. Sridhar
 
+To do:
+* Include weights
 """
 import sys
 import optparse
@@ -15,7 +17,7 @@ try:
 except ImportError:
     raise Exception('Unable to import Numpy.')
 try:
-    from matplotlib.pyplot import plot, xlabel, ylabel, show, legend
+    import matplotlib.pyplot as plt
 except ImportError:
     raise Exception('Unable to import Matplotlib.')
 c = 299792458. # [m/s]
@@ -23,9 +25,9 @@ c = 299792458. # [m/s]
 def main(options):
     # Get the user input
     freqFile = options.freq
-    minPhi   = options.minphi
-    delPhi   = options.delphi
-    nPhi     = options.nphi
+    minPhi   = float(options.minphi)
+    delPhi   = float(options.delphi)
+    nPhi     = int(options.nphi)
     
     # Read the list of frequencies
     lam2 = []
@@ -66,13 +68,13 @@ def main(options):
     print '\tMax scale: '+str(maxSize)+' rad/m2 \n'
     
     # Make plots
-    absVal = plot(phiArray,absR,'black',label='|R|')
-    realVal=plot(phiArray,realR,'r--',label='real(R)')
-    imagVal=plot(phiArray,imagR,'b--',label='imag(R)')
-    xlabel('Faraday depth [rad/m^2]')
-    ylabel('RMSF')
-    legend()
-    show()
+    plt.plot(phiArray,absR,'black',label='|R|')
+    plt.plot(phiArray,realR,'r--',label='real(R)')
+    plt.plot(phiArray,imagR,'b--',label='imag(R)')
+    plt.xlabel('Faraday depth [rad/m^2]')
+    plt.ylabel('RMSF')
+    plt.legend()
+    plt.show()
 
 if __name__ == '__main__':
     opt = optparse.OptionParser()
