@@ -60,7 +60,15 @@ def concatenateWithRAM(validFitsList, shape):
     Concatenate a given list of fits files into a single cube
     """
     concatCube = np.zeros((1, len(validFitsList), shape[-2], shape[-1]))
-    print concatCube.shape
+    for i, name in enumerate(validFitsList):
+        tempData = pf.open(name, readonly=True)[0].data[0]
+        if len(shape) == 2:
+            pass
+        if len(shape) == 3:
+            concatCube[0, i, :] = tempData[0, :]
+        if len(shape) == 4:
+            pass
+    return concatCube
 
 def main(options):
     """
@@ -88,14 +96,16 @@ def main(options):
     print 'INFO: Total required memory is {} MB'.format(totalArraySize)
     availMem = psutil.virtual_memory().available/(1024*1024)
     print 'INFO: Available physical memory is {} MB'.format(availMem)
-
     # Decide whether to use RAM or memory map to store the temporary files
     if totalArraySize > availMem:
         print 'INFO: Memory required by the code is greater than available memory.'
         print 'INFO: Will use memory map to store temporary files.'
     else:
         print 'INFO: Using physical memory to store temporary files.'
-        concatenateWithRAM(validFitsList, shape)
+        finalCube = concatenateWithRAM(validFitsList, shape)
+    print 'INFO: Writing the concatenated fits file to disk'
+    hdu = pf.PrimaryHDU(data=finalCube)
+    hdu.writeto(options.out)
 
 if __name__ == '__main__':
     opt = optparse.OptionParser()
