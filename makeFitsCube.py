@@ -12,10 +12,12 @@ To do list:
 import optparse
 import glob
 import os
+try: import numpy as np
+except ImportError: raise Exception('Unable to import Numpy')
 try: import psutil
-except IOError: raise Exception('Unable to import psutil.')
+except ImportError: raise Exception('Unable to import psutil.')
 try: import pyfits as pf
-except IOError: raise Exception('Unable to import pyFits.')
+except ImportError: raise Exception('Unable to import pyFits.')
 
 version_string = 'v1.0, 8 June 2015\nWritten by Sarrvesh S. Sridhar'
 print 'makeFitsCube.py', version_string 
@@ -27,6 +29,15 @@ def getValidFitsList(fileList):
         if 'FITS' in os.popen('file {}'.format(name)).read():
             validFitsList.append(name)
     return validFitsList
+
+def checkFitsShape(fitsList):
+    for i, name in enumerate(fitsList):
+        if i == 0:
+            templateShape = pf.open(name, readonly=True)[0].data[0].shape
+        elif templateShape == pf.open(name, readonly=True)[0].data[0].shape: pass
+        else:
+            raise Exception('Fits file {} has an incompatible shape'.format(name))
+    return templateShape
 
 def main(options):
     # Check user input
@@ -47,6 +58,9 @@ def main(options):
     print 'INFO: Identified {} fits files from {} files selected by input string'.\
           format(len(validFitsList), len(fileList))
     
+    # Check if the list of supplied fits files have the same shape
+    shape = checkFitsShape(validFitsList)
+    print 'All fits files have shape {}'.format(shape)
     # Estimate the size requirements for the selected list of fits files
     #totPixels = 0
     #for name in validFitsList:
