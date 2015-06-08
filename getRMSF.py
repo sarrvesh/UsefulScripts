@@ -28,23 +28,17 @@ def main(options):
     nPhi     = options.nphi
     
     # Read the list of frequencies
-    f = open(freqFile, 'r')
-    freqListStr = f.readlines()
-    # Convert the read frequencies to wavelengths and compute \lambda^2
-    lam = []
     lam2 = []
-    for i in range(len(freqList_str)):
-    	lam.append( (c/float(freqList_str[i])) )
-	    lam2.append( (c/float(freqList_str[i]))**2 )
-    f.close()
-    del freqList_str
+    with open(freqFile) as f:
+        for line in f:
+    	    lam2.append( (c/float(line))**2 )
     
     # Compute \lambda_0^2
     lam2_0 = median(lam2)
     
     # Get the normalization factor K
     K = 0
-    for i in range(len(lam2)):
+    for i in lam2:
         K += 1
     
     # Compute the numerator of R(\phi)
