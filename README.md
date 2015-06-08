@@ -7,6 +7,7 @@ Usage:
 Dependencies:
 * psutil (https://github.com/giampaolo/psutil)
 * pyFits (http://www.stsci.edu/institute/software_hardware/pyfits)
+* Numpy (http://www.numpy.org/)
 
 To Do:
 * Use AstroPy instead of pyFits.
