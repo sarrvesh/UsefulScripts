@@ -57,9 +57,25 @@ def checkFitsShape(fitsList):
 
 def concatenateWithRAM(validFitsList, shape):
     """
-    Concatenate a given list of fits files into a single cube
+    Concatenate a given list of fits files into a single cube using RAM
     """
     concatCube = np.zeros((1, len(validFitsList), shape[-2], shape[-1]))
+    for i, name in enumerate(validFitsList):
+        tempData = pf.open(name, readonly=True)[0].data[0]
+        if len(shape) == 2:
+            concatCube[0, i, :] = tempData[:]
+        if len(shape) == 3:
+            concatCube[0, i, :] = tempData[0, :]
+        if len(shape) == 4:
+            concatCube[0, i, :] = tempData[0, 0, :]
+    return concatCube
+
+def concatenateWithMemMap(validFitsList, shape, memMapName):
+    """
+    Concatenate a given list of fits files into a single cube using memory map
+    """
+    concatCube = np.memmap(memMapName, dtype='float32', mode='w+',\
+                           shape=(1, len(validFitsList), shape[-2], shape[-1]))
     for i, name in enumerate(validFitsList):
         tempData = pf.open(name, readonly=True)[0].data[0]
         if len(shape) == 2:
@@ -74,6 +90,7 @@ def main(options):
     """
     Main function
     """
+    memMapName = 'memMap'
     # Check user input
     if options.inp == '':
         raise Exception('An input glob string must be specified.')
@@ -100,12 +117,16 @@ def main(options):
     if totalArraySize > availMem:
         print 'INFO: Memory required by the code is greater than available memory.'
         print 'INFO: Will use memory map to store temporary files.'
+        finalCube = concatenateWithMemMap(validFitsList, shape, memMapName)
     else:
         print 'INFO: Using physical memory to store temporary files.'
         finalCube = concatenateWithRAM(validFitsList, shape)
-    print 'INFO: Writing the concatenated fits file to disk'
-    hdu = pf.PrimaryHDU(data=finalCube)
+    # Get a template header from a fits file
+    header = pf.open(validFitsList[0], readonly=True)[0].header
+    print 'INFO: Writing the concatenated fits file to {}'.format(options.out)
+    hdu = pf.PrimaryHDU(data=finalCube, header=header)
     hdu.writeto(options.out)
+    os.remove(memMapName)
 
 if __name__ == '__main__':
     opt = optparse.OptionParser()
