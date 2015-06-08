@@ -63,11 +63,11 @@ def concatenateWithRAM(validFitsList, shape):
     for i, name in enumerate(validFitsList):
         tempData = pf.open(name, readonly=True)[0].data[0]
         if len(shape) == 2:
-            pass
+            concatCube[0, i, :] = tempData[:]
         if len(shape) == 3:
             concatCube[0, i, :] = tempData[0, :]
         if len(shape) == 4:
-            pass
+            concatCube[0, i, :] = tempData[0, 0, :]
     return concatCube
 
 def main(options):
@@ -109,11 +109,12 @@ def main(options):
 
 if __name__ == '__main__':
     opt = optparse.OptionParser()
-    opt.add_option('-i', '--inp', help='Glob selection string for input files '+\
-                    '[no default]', default='')
-    opt.add_option('-o', '--out', help='Filename of the output cube '+\
+    opt.add_option('-i', '--inp', help='Glob selection string for input files '+
+                   '[no default]', default='')
+    opt.add_option('-o', '--out', help='Filename of the output cube '+
                    '[default: mergedFits.fits]', default='mergedFits.fits')
-    opt.add_option('-f', '--freq', help='Write the list of frequencies to a text file', \
+    opt.add_option('-f', '--freq',
+                   help='Write the list of frequencies to a text file [default: False]',
                    default=False, action='store_true')
     inOpts, arguments = opt.parse_args()
     main(inOpts)
