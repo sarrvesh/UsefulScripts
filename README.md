@@ -7,3 +7,6 @@
 * makeRMErrorMap.py
 
 * getSpecIndex.py
+
+* listDataCols.py:
+    List all the data columns containing visibilities in a measurement set
