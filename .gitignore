@@ -55,3 +55,11 @@ docs/_build/
 
 # PyBuilder
 target/
+
+# User-defined stuff
+*.FITS
+*.fits
+*.sh
+*.dat
+*.txt
+computeStructureFunction
