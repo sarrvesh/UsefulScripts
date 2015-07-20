@@ -12,3 +12,6 @@
     
 * getSpecIndex.py<br />
     Place holder
+    
+* plotUVCoverage.py<br />
+    Plots the UV coverage of a given measurement set.
