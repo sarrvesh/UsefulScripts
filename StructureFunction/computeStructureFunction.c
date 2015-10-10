@@ -8,27 +8,34 @@
 #define FAILURE 1
 #define nINPUTS 7
 
-#define deg2rad(x) x*M_PI/180.0
-#define rad2deg(x) x*180.0/M_PI
-#define TO_RAD M_PI/180.0
 #define round(x) ((x)>=0?(long)((x)+0.5):(long)((x)-0.5))
+#define TO_DEG 180/M_PI
+#define TO_RAD M_PI/180
 
-double angLogDistDeg(double th1, double ph1, double th2, double ph2);
+double angDistDeg(double th1, double ph1, double th2, double ph2);
 
 /**********************************************************************
- * Computes the angular distance in deg using the Haversine
- * formula for a given set of (ra, dec) coordinates in degrees.
+ * Computes the angular distance in deg for a given set of (ra, dec) 
+ * coordinates in degrees.
  **********************************************************************/
-double angLogDistDeg(double th1, double ph1, double th2, double ph2)
+double angDistDeg(double th1, double ph1, double th2, double ph2)
 {
-    double dx, dy, dz;
-    ph1 -= ph2;
-    ph1 *= TO_RAD, th1 *= TO_RAD, th2 *= TO_RAD;
- 
-    dz = sin(th1) - sin(th2);
-    dx = cos(ph1) * cos(th1) - cos(th2);
-    dy = sin(ph1) * cos(th1);
-    return log10(rad2deg(asin(sqrt(dx * dx + dy * dy + dz * dz) / 2) * 2));
+    double ra1rad, ra2rad, dec1rad, dec2rad;
+    double x, y, z, rad;
+    
+    ra1rad = th1*TO_RAD;
+    ra2rad = th2*TO_RAD;
+    dec1rad= ph1*TO_RAD;
+    dec2rad= ph2*TO_RAD;
+    
+    x=cos(ra1rad)*cos(dec1rad)*cos(ra2rad)*cos(dec2rad);
+    y=sin(ra1rad)*cos(dec1rad)*sin(ra2rad)*cos(dec2rad);
+    z=sin(dec1rad)*sin(dec2rad);
+    
+    if(x+y+z >= 1)  { rad = 0.0; }
+    else            { rad = acos(x+y+z); }
+    
+    return rad*TO_DEG;
 }
 
 int main(int argc, char *argv[])  {
@@ -43,7 +50,7 @@ int main(int argc, char *argv[])  {
     /* Declare all other variables */
     FILE *ptr;
     double *RA, *Dec, *RM, *eRM;
-    double *rmSqDiff, *angLogDist, *varSum;
+    double *rmSqDiff, *angDist, *angLogDist, *varSum;
     unsigned long long int nCorrelations, index;
     int i, j;
     double minRMDiff, maxRMDiff, minAngDist, maxAngDist;
@@ -81,6 +88,7 @@ int main(int argc, char *argv[])  {
     /* Allocate memory to store the correlations */
     rmSqDiff   = calloc(nCorrelations, sizeof(rmSqDiff));
     varSum     = calloc(nCorrelations, sizeof(varSum));
+    angDist    = calloc(nCorrelations, sizeof(angDist));
     angLogDist = calloc(nCorrelations, sizeof(angLogDist));
     index = 0;
     //ptr = fopen("checkDistance.txt", "w");
@@ -91,24 +99,25 @@ int main(int argc, char *argv[])  {
             /* Compute the squared sum of the noise */
            	varSum[index] = pow(eRM[i],2) + pow(eRM[j],2);
             /* Find the distance between the two pixels in this correlation */
-            angLogDist[index] = angLogDistDeg(RA[i], Dec[i], RA[j], Dec[j]);
+            angDist[index] = angDistDeg(RA[i], Dec[i], RA[j], Dec[j]);
+            angLogDist[index] = log10(angDist[index]);
            
             /* Keep track of the min and max of both rmSqDiff and angLogDiff */
             if(index == 0)  {
                 minRMDiff = rmSqDiff[index];
                 maxRMDiff = rmSqDiff[index];
-                minAngDist= angLogDist[index];
-                maxAngDist= angLogDist[index];
+                minAngDist= angDist[index];
+                maxAngDist= angDist[index];
                 minVarSum = varSum[index]; 
                 maxVarSum = varSum[index];
             }
             else {
-                if(minRMDiff > rmSqDiff[index])    { minRMDiff = rmSqDiff[index]; }
-                if(maxRMDiff < rmSqDiff[index])    { maxRMDiff = rmSqDiff[index]; }
-                if(minAngDist > angLogDist[index]) { minAngDist = angLogDist[index]; }
-                if(maxAngDist < angLogDist[index]) { maxAngDist = angLogDist[index]; }
-                if(minVarSum > varSum[index])      { minVarSum = varSum[index];   }
-                if(maxVarSum < varSum[index])      { maxVarSum = varSum[index];   }
+                if(minRMDiff > rmSqDiff[index]) { minRMDiff = rmSqDiff[index]; }
+                if(maxRMDiff < rmSqDiff[index]) { maxRMDiff = rmSqDiff[index]; }
+                if(minAngDist > angDist[index]) { minAngDist = angDist[index]; }
+                if(maxAngDist < angDist[index]) { maxAngDist = angDist[index]; }
+                if(minVarSum > varSum[index])   { minVarSum = varSum[index];   }
+                if(maxVarSum < varSum[index])   { maxVarSum = varSum[index];   }
             }            
             if(index%(nCorrelations/10) == 0)
             	printf("\nINFO: Processing index %lld/%lld", index, nCorrelations);
@@ -121,15 +130,18 @@ int main(int argc, char *argv[])  {
     
     /* Allocate memory for histogram bins */
     printf("\nINFO: Binning data with");
-    printf("\nStart value: %lf", binStart);
-    printf("\nBin Size: %lf", binSize);
-    printf("\nNo. of bins: %d", nBins);
+    printf("\n\tStart value: %lf", binStart);
+    printf("\n\tBin Size: %lf", binSize);
+    printf("\n\tNo. of bins: %d", nBins);
     histBinsForRM = calloc(nBins, sizeof(histBinsForRM));
     histBinsForeRM= calloc(nBins, sizeof(histBinsForeRM));
     histBinsCount = calloc(nBins, sizeof(histBinsCount));
     histXAxis     = calloc(nBins, sizeof(histBinsCount));
     /* Compute the x-axis values for a given hist setup */
-    for(i=0; i<nBins; i++) { histXAxis[i] = i*binSize + binStart - binSize/2; }
+    for(i=0; i<nBins; i++) { 
+        histXAxis[i] = i*binSize + binStart - binSize/2; 
+    }
+
     /* Do histogram binning */
     index = 0;
     for(i=0; i<nCorrelations; i++)	{
@@ -148,7 +160,6 @@ int main(int argc, char *argv[])  {
     	index+=1;
     }
     printf("\nINFO: %lld/%lld valid values were used for binning.", index, nCorrelations);
-    printf("\nCHECK: Value in bin 3: %lf", histBinsForRM[3]);
     
     /* Compute the averages in each bin */
     for(i=0; i<nBins; i++)	{
@@ -159,7 +170,6 @@ int main(int argc, char *argv[])  {
     	histBinsForRM [i] /= histBinsCount[i];
     	histBinsForeRM[i] /= histBinsCount[i];
     }
-    printf("\nCHECK: Avg Value in bin 3: %lf", histBinsForRM[3]);
     
     /* Write structure function to disk */
     /* Format: <X Axis value> <binned RM> <binned eRM> <# per bin> */
@@ -167,7 +177,6 @@ int main(int argc, char *argv[])  {
     ptr = fopen(plotValsFileName, "w");
     for(i=0; i<nBins; i++)
     	fprintf(ptr, "%lf %lf %lf %d\n", histXAxis[i], histBinsForRM[i], histBinsForeRM[i], histBinsCount[i]);
-    fflush(ptr);
     fclose(ptr);
     printf("\n");   
     return SUCCESS;

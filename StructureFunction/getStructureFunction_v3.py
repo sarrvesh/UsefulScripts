@@ -48,22 +48,21 @@ def main(options):
             fdImage = pf.open(options.fdImage)
             errImage= pf.open(options.rmError)
         except: raise Exception('Unable to read the input image.')
-        fdArray = fdImage[0].data
-        errArray= errImage[0].data
+        fdArray = np.squeeze(fdImage[0].data)
+        errArray= np.squeeze(errImage[0].data)
         header  = fdImage[0].header
         fdImage.close()
         # Loop over each pixel and get the sky coordinates
         wcs     = WCS(header)
-        raSize  = fdArray.shape[-1]
-        decSize = fdArray.shape[-2]
+        decSize, raSize = fdArray.shape
         tempRA = []; dec = []; RM = []; errRM = []
-        for i in range(raSize):
-            for j in range(decSize):
+        for j in range(raSize):
+            for i in range(decSize):
             	# Do not include blanked pixels. Pywcs reads them as nan
             	if str(fdArray[i,j]) == 'nan': continue
             	else:
-                    tempRA.append(wcs.wcs_pix2sky([[i,j,0]], 0)[0][0])
-                    dec.append   (wcs.wcs_pix2sky([[i,j,0]], 0)[0][1])
+                    tempRA.append(wcs.wcs_pix2sky([[j,i,0]], 0)[0][0])
+                    dec.append   (wcs.wcs_pix2sky([[j,i,0]], 0)[0][1])
                     RM.append    (fdArray[i,j])
                     errRM.append (errArray[i,j])
         nValidPixels = len(dec)
@@ -74,29 +73,31 @@ def main(options):
             iImage  = pf.open(options.polInt)
             errImage= pf.open(options.rmError)
         except: raise Exception('Unable to read the input images')
-        fdArray = fdImage[0].data
-        iArray  = iImage[0].data
-        errArray= errImage[0].data
+        fdArray = np.squeeze(fdImage[0].data)
+        iArray  = np.squeeze(iImage[0].data)
+        errArray= np.squeeze(errImage[0].data)
         header  = fdImage[0].header
+        print fdArray.shape
         #Initialize a new array which will be updated as per the mask
-        maskedIm= fdImage[0].data
-        maskerrRM = errImage[0].data
+        maskedIm= np.squeeze(fdImage[0].data)
+        maskerrRM = np.squeeze(errImage[0].data)
+        print maskedIm.shape
         # Check if the input images have the same shape
         if fdArray.shape != iArray.shape:
             raise Exception('Input images have different shape')
         wcs    = WCS(header)
-        raSize = fdArray.shape[-1]
-        decSize= fdArray.shape[-2]
+        decSize, raSize = fdArray.shape
         tempRA = []; dec = []; RM = []; errRM = []
         nValidPixels = 0
-        for i in range(raSize):
-            for j in range(decSize):
+        for j in range(raSize):
+            for i in range(decSize):
                 if iArray[i,j] < float(options.threshold):
                     maskedIm[i,j] = np.nan
                     maskerrRM[i,j] = np.nan
+                elif str(fdArray[i,j]) == 'nan': continue
                 else:
-                    tempRA.append(wcs.wcs_pix2sky([[i,j,0]], 0)[0][0])
-                    dec.append   (wcs.wcs_pix2sky([[i,j,0]], 0)[0][1])
+                    tempRA.append(wcs.wcs_pix2sky([[j,i,0]], 0)[0][0])
+                    dec.append   (wcs.wcs_pix2sky([[j,i,0]], 0)[0][1])
                     RM.append    (fdArray[i,j])
                     errRM.append (errArray[i,j])
                     nValidPixels += 1
@@ -119,10 +120,16 @@ def main(options):
         tempFile.write('{:.5f} {:.5f} {:.5f} {:.5f}\n'.format(ra[i], dec[i], RM[i], errRM[i]))
     tempFile.close()
     
+    # Get the resolution of the input images
+    bmaj = float(header['BMAJ'])*3600.
+    bmin = float(header['BMIN'])*3600.
+    print 'INFO: Resolution of the input image: {:.2f} arcsec by {:.2f} arcsec'.format(bmaj, bmin)
+    
     # Pass the pixel list and the number of entries to the C code
     os.system('./computeStructureFunction {:} {:} {} {} {} {}'.format(\
               validPixelFileName, nValidPixels, options.binStart,  \
               options.nBins, options.binSize, plotValsFromC))
+
     # Read the plot points returned by C
     xVal = []; diffVal = []; rmVal = []; eRMVal = []
     for line in open(plotValsFromC, "r"):
@@ -132,28 +139,13 @@ def main(options):
     xVal   = np.asarray(xVal)
     rmVal  = np.asarray(rmVal)
     eRMVal = np.asarray(eRMVal)
-    diffVal= np.subtract(rmVal, eRMVal)
+    diffVal= np.absolute(np.subtract(rmVal, eRMVal))
     
     # Plot
     plt.plot(xVal, np.log10(diffVal), 'bo', label="My code")
-    #plt.plot(xVal, rmVal  , color='blue')
-    #plt.plot(xVal, eRMVal , color='purple')
     plt.xlabel('Angular distance (deg)')
     plt.ylabel('Structure function')
-    #plt.show()
-    
-    # Plot Ann's values on yours
-    annX = []; annRM = []; annERM = []
-    for line in open('structure_function_Lband.dat',"r"):
-    	annX.append(float(line.split()[0]))
-    	annRM.append(float(line.split()[1]))
-    	annERM.append(float(line.split()[2]))
-    annX = np.asarray(annX)
-    annRM= np.asarray(annRM)
-    annERM=np.asarray(annERM)
-    annDiff = np.subtract(annRM, annERM)
-    plt.plot(np.log10(annX), np.log10(annDiff), 'ro', label="Ann's code")
-    plt.legend(loc='best')
+    plt.savefig('output.png')
     plt.show()
     
 print ''
