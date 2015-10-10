@@ -126,6 +126,7 @@ int main(int argc, char *argv[])  {
     }
     printf("\nINFO: RM Difference Min: %lf and Max: %lf", minRMDiff, maxRMDiff);
     printf("\nINFO: Angular distance Min: %lf and Max: %lf", minAngDist, maxAngDist);
+    printf("\nINFO: Angular distance in log. Min: %lf and Max: %lf", log10(minAngDist), log10(maxAngDist));
     printf("\nINFO: Sum of error in RM Min: %lf and Max: %lf", minVarSum, maxVarSum);
     
     /* Allocate memory for histogram bins */
