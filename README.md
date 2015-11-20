@@ -8,10 +8,10 @@
     Concats a list of 2D fits images into a 4D cube. Handy for running RM Synthesis.
 
 * listDataCols.py:<br />
-    List all the data columns containing visibilities in a measurement set
+    List all the data columns containing visibilities in a measurement set.
     
 * getSpecIndex.py<br />
     Place holder
     
-* plotUVCoverage.py<br />
-    Plots the UV coverage of a given measurement set.
+* stackWSCleanImages.py<br />
+    Script to stack lofar images.
