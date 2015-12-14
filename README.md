@@ -15,3 +15,6 @@
     
 * stackWSCleanImages.py<br />
     Script to stack lofar images.
+
+* fitSpectralProfile.py<br />
+    Fit curved spectra to input images.
