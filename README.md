@@ -18,3 +18,6 @@
 
 * fitSpectralProfile.py<br />
     Fit curved spectra to input images.
+
+* plotVisibilityDensity.py<br />
+    Plots the visibility density for a given measurement set.
