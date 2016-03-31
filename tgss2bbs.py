@@ -6,6 +6,11 @@ This script sources from the TGSS VO server and creates a BBS compatible skymode
 
 Written by Sarrvesh S. Sridhar.
 Last updated: March 31, 2016.
+
+TODO:
+1. All sources are currently written as GAUSSIANS. Compare the source and beam sizes to 
+   determine if the sources are GAUSSIANS/POINT.
+
 """
 import pyvo as vo
 from astropy.coordinates import SkyCoord
@@ -39,6 +44,7 @@ def main(options):
          # Write an entry for this source into the output file inside the above defined patch
          f.write("{name}, GAUSSIAN, Patch, {ra}, {dec}, {i}, 0, 0, 0, {ma}, {mi}, {pa}, , [-0.8]\n".format(name=item['ID'], ra=newRA, dec=newDec, i=item['Sint']/1e3, ma=item['MAJAX'], mi=item['MINAX'], pa=item['PA']))
    else:
+      # Writes sources without a patch
       f.write("FORMAT = Name, Type, Ra, Dec, I, Q, U, V, MajorAxis, MinorAxis, Orientation, ReferenceFrequency='147610000.0', SpectralIndex='[]'\n\n")
       for item in t:
          # VO table has RA and DEC in degrees. Convert it to hmsdms format
