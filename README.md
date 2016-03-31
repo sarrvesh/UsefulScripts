@@ -9,6 +9,9 @@
 
 * listDataCols.py:<br />
     List all the data columns containing visibilities in a measurement set.
+
+* tgss2bbs.py:<br />
+    Extract a TGSS skymodel in a BBS compatible format.
     
 * getSpecIndex.py<br />
     Place holder
