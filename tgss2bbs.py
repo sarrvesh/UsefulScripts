@@ -5,11 +5,8 @@ tgss2bbs.py
 This script sources from the TGSS VO server and creates a BBS compatible skymodel.
 
 Written by Sarrvesh S. Sridhar.
-Last updated: March 31, 2016.
-
-TODO:
-1. All sources are currently written as GAUSSIANS. Compare the source and beam sizes to 
-   determine if the sources are GAUSSIANS/POINT.
+Updated by George Heald.
+Last updated: April 28, 2016.
 
 """
 import pyvo as vo
@@ -41,8 +38,18 @@ def main(options):
          c = SkyCoord(float(item['RA']), float(item['DEC']), unit='deg')
          newRA = c.to_string('hmsdms').split(' ')[0].replace('h',':').replace('m',':').replace('s','')
          newDec = c.to_string('hmsdms').split(' ')[1].replace('d','.').replace('m','.').replace('s','')
+	 # Determine whether source is extended
+	 sratio = item['Sint']/item['Spk']
+	 if sratio > 1.25:
+		srctype='GAUSSIAN'
+		majaxsize = (max([item['MAJAX'],25.])**2-25.**2)**0.5
+		minaxsize = (max([item['MINAX'],25.])**2-25.**2)**0.5
+	 else:
+		srctype='POINT'
+		majaxsize = ""
+		minaxsize = ""
          # Write an entry for this source into the output file inside the above defined patch
-         f.write("{name}, GAUSSIAN, Patch, {ra}, {dec}, {i}, 0, 0, 0, {ma}, {mi}, {pa}, , [-0.8]\n".format(name=item['ID'], ra=newRA, dec=newDec, i=item['Sint']/1e3, ma=item['MAJAX'], mi=item['MINAX'], pa=item['PA']))
+         f.write("{name}, {type}, Patch, {ra}, {dec}, {i}, 0, 0, 0, {ma}, {mi}, {pa}, , [-0.8]\n".format(name=item['ID'], type=srctype, ra=newRA, dec=newDec, i=item['Sint']/1e3, ma=majaxsize, mi=minaxsize, pa=item['PA']))
    else:
       # Writes sources without a patch
       f.write("FORMAT = Name, Type, Ra, Dec, I, Q, U, V, MajorAxis, MinorAxis, Orientation, ReferenceFrequency='147610000.0', SpectralIndex='[]'\n\n")
@@ -51,8 +58,18 @@ def main(options):
          c = SkyCoord(float(item['RA']), float(item['DEC']), unit='deg')
          newRA = c.to_string('hmsdms').split(' ')[0].replace('h',':').replace('m',':').replace('s','')
          newDec = c.to_string('hmsdms').split(' ')[1].replace('d','.').replace('m','.').replace('s','')
+	 # Determine whether source is extended
+	 sratio = item['Sint']/item['Spk']
+	 if sratio > 1.25:
+		srctype='GAUSSIAN'
+		majaxsize = (max([item['MAJAX'],25.])**2-25.**2)**0.5
+		minaxsize = (max([item['MINAX'],25.])**2-25.**2)**0.5
+	 else:
+		srctype='POINT'
+		majaxsize = ""
+		minaxsize = ""
          # Write an entry for this source into the output file
-         f.write("{name}, GAUSSIAN, {ra}, {dec}, {i}, 0, 0, 0, {ma}, {mi}, {pa}, , [-0.8]\n".format(name=item['ID'], ra=newRA, dec=newDec, i=item['Sint']/1e3, ma=item['MAJAX'], mi=item['MINAX'], pa=item['PA']))
+         f.write("{name}, {type}, {ra}, {dec}, {i}, 0, 0, 0, {ma}, {mi}, {pa}, , [-0.8]\n".format(name=item['ID'], type=srctype, ra=newRA, dec=newDec, i=item['Sint']/1e3, ma=majaxsize, mi=minaxsize, pa=item['PA']))
    f.close()
 
 if __name__ == '__main__':
