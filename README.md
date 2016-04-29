@@ -12,6 +12,9 @@
 
 * tgss2bbs.py:<br />
     Extract a TGSS skymodel in a BBS compatible format.
+
+* plotWSCleanWeights.py:<br />
+    Plot azimuthally averaged visibility weights from WSClean.
     
 * getSpecIndex.py<br />
     Place holder
