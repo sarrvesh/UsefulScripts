@@ -80,6 +80,7 @@ def main(options):
 
     # Get the list of FITS files
     fileList = sorted(glob.glob(options.inp))
+    print fileList
     validFitsList = getValidFitsList(fileList)
     print 'INFO: Identified {} fits files from {} files selected by input string'.\
           format(len(validFitsList), len(fileList))
