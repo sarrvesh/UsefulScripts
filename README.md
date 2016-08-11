@@ -27,3 +27,6 @@
 
 * plotVisibilityDensity.py<br />
     Plots the visibility density for a given measurement set.
+
+* findDistance.py<br />
+    Print angular distances between two astronomical sources.
