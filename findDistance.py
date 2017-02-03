@@ -13,13 +13,17 @@ import glob
 import pyvo as vo
 from astropy.coordinates import SkyCoord
 from astropy import units as u
+import sys
 
 def main(options):
     # Get the list of calibrators
     calList = options.cal.split(',')
     
     # Resolve the target
-    t = vo.object2pos(options.target)
+    try: t = vo.object2pos(options.target, db='NED')
+    except:
+       print 'Unable to query the target. Terminating execution'
+       sys.exit(1)
     target = SkyCoord(ra=t[0]*u.degree, dec=t[1]*u.degree)
     print "\nTarget: {} ({} {})\n".format(options.target, t[0], t[1])
     print "Calibrator\tDistance from target"
