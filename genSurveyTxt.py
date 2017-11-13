@@ -52,10 +52,36 @@ def validateInput(options):
                 raise IOError('Invalid A-team source specified.')
 
 def makeHeader(projectName, mainFolderName, outFile):
+    """
+    Write the header section to the output text file
+    """
     outFile.write('projectName={}\n'.format(projectName))
     outFile.write('mainFolderName={}\n'.format(mainFolderName))
     outFile.write('mainFolderDescription=Preprocessing:HBA Dual Inner,'+\
                   ' 110-190MHz, 8bits, 48MHz@144MHz, 1s, 64ch/sb\n\n')
+
+def writeCalibrator(dateStr, calibName, avgStr, commonStr, outFile):
+    outFile.write('BLOCK\n\n')
+    outFile.write('packageName={}\n'.format(calibName))
+    #outFile.write('startTimeUTC=\n')
+    outFile.write('targetDuration_s=600\n')
+    outFile.write(commonStr+'\n')
+    outFile.write('targetBeams=\n')
+    outFile.write('{};{};;;;;T;1800\n'.format(getCalPointing(calibName),\
+                  calibName))
+    outFile.write('Demix={};64;10;;;F\n'.format(avgStr.replace(',',';')))
+    outFile.write('\n')
+
+def getCalPointing(calName):
+    return {
+        '3C295':'14:11:20.5;52:12:10',
+        '3C196':'08:13:36.0;48:13:03',
+        '3C48' :'01:37:41.3;33:09:35',
+        '3C147':'05:42:36.1;49:51:07',
+        '3C380':'18:29:31.8;48:44:46',
+        '3C286':'13:31:08.3;30:30:33',
+        'CTD93':'16:09:13.3;26:41:29',
+    }[calName]
 
 if __name__ == '__main__':
     opt = optparse.OptionParser()
@@ -84,9 +110,10 @@ if __name__ == '__main__':
     options, args = opt.parse_args()
 
     # Define all parameters that are common to both cal and target blocks
-    commonStr = "split_target=F\ncalibration=none\nprocessing=Preprocessing"\
-                "\nimagingPipeline=none\ncluster=CEP4\nrepeat=1\n"\
-                "nr_tasks=122\nnr_core_per_task=2\npackageDescription="\
+    commonStr = "split_targets=F\ncalibration=none\n"\
+                "processing=Preprocessing\n"\
+                "imagingPipeline=none\ncluster=CEP4\nrepeat=1\n"\
+                "nr_tasks=122\nnr_cores_per_task=2\npackageDescription="\
                 "HBA Dual Inner, 110-190MHz, 8bits, 48MHz@144MHz, 1s,"\
                 " 64ch/sb\nantennaMode=HBA Dual Inner\nclock=200 MHz\n"\
                 "instrumentFilter=110-190 MHz\nnumberOfBitsPerSample=8\n"\
@@ -100,9 +127,12 @@ if __name__ == '__main__':
                 "242..255,257..273,275..300,302..328,330..347,349,364,372,"\
                 "380,388,396,404,413,421,430,438,447;243\n"\
                 "timeStep1=60\ntimeStep2=60"
-
+    
     # Valid user input
     validateInput(options)
+    
+    # Extract user info
+    calibs = options.calib.split(',')
 
     # Find suitable calibrators
     #findCalibrators(options)
@@ -114,12 +144,14 @@ if __name__ == '__main__':
     makeHeader(options.project, options.main_name, outFile)
 
     # Write first calibrator block
+    writeCalibrator(options.date, calibs[0], options.avg, commonStr, outFile)
 
     # Find the tile beam pointing
 
     # Generate target block
 
     # Write second calibrator block
+    writeCalibrator(options.date, calibs[1], options.avg, commonStr, outFile)
     
     # Close the file
     outFile.close()
