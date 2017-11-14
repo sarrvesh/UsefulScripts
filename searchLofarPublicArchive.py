@@ -26,12 +26,12 @@ def searchLofarPublicArchive(srcName, distance):
    for pointing in query:
       query_subarr = SubArrayPointing.pointing == pointing
       for subarr in query_subarr:
-         print subarr.duration
          query_obs = Observation.subArrayPointings.contains(subarr)
          for obs in query_obs:
+            print obs.observingMode, obs.numberOfBitsPerSample, obs.numberOfSubArrayPointings
             if obs.numberOfSubArrayPointings <= 2 and \
-               obs.numberOfBitsPerSample >= 8 and \
-               obs.observingMode == 'Interferometer':
+               obs.numberOfBitsPerSample >= 8:
+               #obs.observingMode == 'Interferometer':
                projectID.append( obs.get_project() )
    return projectID   
 
