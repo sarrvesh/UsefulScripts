@@ -87,6 +87,15 @@ class pointingInfo(object):
         self.validateNames()
         self.validateCalibrators()
         self.validateDemix()
+        self.validatePointings()
+
+    def validatePointings(self):
+        """
+        Make sure that the two pointings are inside the tile beam.
+        """
+        if self.coordPoint1.separation(self.coordPoint2).deg > 8.:
+            raise IOError('Angular separation between the two target '+\
+                          'beams is more than 10 degrees.')
 
     def validateNames(self):
         """
@@ -205,7 +214,7 @@ class pointingInfo(object):
         tempDec = (self.coordPoint2.dec.degree + \
                    self.coordPoint2.dec.degree)/2.
         return SkyCoord(tempRA, tempDec, unit=u.deg)
-
+        
 def getCalPointing(calName):
     """
     Returns coordinates of standard flux density calibrators.
