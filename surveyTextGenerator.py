@@ -11,6 +11,8 @@ import optparse
 import datetime
 from astropy.coordinates import SkyCoord
 import astropy.units as u
+from ephem import Observer, FixedBody, degrees
+import numpy as np
 
 class pointingInfo(object):
     """
@@ -23,6 +25,7 @@ class pointingInfo(object):
         targetObsLength: Length of the target scan.
         calibrators:     Names of the bookend calibrators.
         aTeamSources:    Sources that need to be demixed.
+        elevation:       Minimum source elevation.
         avg:             Freq and time averaging parameters.
         namePoint1:      Name of the first target beam.
         namePoint2:      Name of the second target beam.
@@ -43,8 +46,8 @@ class pointingInfo(object):
         except:
             raise IOError('Invalid date specified.')
         self.targetObsLength = float(options.time)
-        self.calibrators = options.calib.split(',')
         self.aTeamSources = options.demix.split(',')
+        self.elevation = float(options.elevation)
         self.avg = options.avg
         try:
             self.namePoint1 = options.point1.split(',')[0]
@@ -79,13 +82,15 @@ class pointingInfo(object):
                 "380,388,396,404,413,421,430,438,447;243\n"\
                 "timeStep1=60\ntimeStep2=60"
 
+        # Make a list of all valid calibrators
+        self.validCals = ['3C295', '3C196', '3C48', '3C147', '3C380']
+
     def validateInput(self):
         """
         Validate user input for
         - valid project and main folder names
         """
         self.validateNames()
-        self.validateCalibrators()
         self.validateDemix()
         self.validatePointings()
 
@@ -108,18 +113,6 @@ class pointingInfo(object):
         elif len(self.mainName) > 20:
             raise IOError('main_name cannot be more than 20 '+\
                           'characters long')
-
-    def validateCalibrators(self):
-        """
-        Check if the calibrator information is correct.
-        """
-        if len(self.calibrators) != 2:
-            raise IOError('You must specify two bookend calibrators.')
-        validCals = ['3C295', '3C196', '3C48', '3C147', '3C380', \
-                     '3C286', 'CTD93']
-        for item in self.calibrators:
-            if item not in validCals:
-                raise IOError('{} is not a calibrator'.format(item))
 
     def validateDemix(self):
         """
@@ -214,6 +207,44 @@ class pointingInfo(object):
         tempDec = (self.coordPoint2.dec.degree + \
                    self.coordPoint2.dec.degree)/2.
         return SkyCoord(tempRA, tempDec, unit=u.deg)
+
+    def findCalibrator(self, time):
+        """
+        For a given datetime, return a list of calibrators that are above
+        the minimum elevation limit.
+        """
+        # Create the telescope object
+        # The following values were taken from otool.py which is part of the
+        # LOFAR source visibility calculator.
+        lofar = Observer()
+        lofar.lon = '6.869882'
+        lofar.lat = '52.915129'
+        lofar.elevation = 15.*u.m
+        lofar.date = time
+        
+        # Create the target object
+        target = FixedBody()
+        target._epoch = '2000'
+        target._ra = self.coordPoint1.ra.radian
+        target._dec = self.coordPoint1.dec.radian
+        target.compute(lofar)
+        targetElevation = float(target.alt)*180./np.pi
+
+        # Create the calibrator object
+        calibrator = FixedBody()
+        calibrator._epoch = '2000'
+        calName = []
+        distance = []
+        for item in self.validCals:
+            myCoord = getCalPointing(item)
+            calibrator._ra = myCoord.split(';')[0]
+            calibrator._dec = myCoord.split(';')[1]
+            calibrator.compute(lofar)
+            tempElevation = float(calibrator.alt)*180./np.pi
+            if tempElevation > self.elevation:
+                calName.append(item)
+                distance.append(np.absolute(tempElevation-targetElevation))
+        return calName[np.argmin(distance)]
         
 def getCalPointing(calName):
     """
@@ -239,15 +270,14 @@ if __name__ == '__main__':
                    'yyyy-mm-dd-hh-mm-ss format [no default]', default='')
     opt.add_option('-t', '--time', help='Length of the target observation '+\
                    'in hours [default: 8 hours]', default='8')
+    opt.add_option('-e', '--elevation', help='Minimum source elevation '+\
+                   '[default: 20 degrees]', default='20')
     opt.add_option('-a', '--avg', help='Comma-separated freq and time '+\
                    'averaging factors [default=4,1]', default='4,1')
     opt.add_option('-x', '--point1', help='First beam info as '+\
                    '<name>,<ra>,<dec> [no default]', default='')
     opt.add_option('-y', '--point2', help="Second beam info as "+\
                    '<name>,<ra>,<dec> [no default]', default='')
-    opt.add_option('-c', '--calib', help="Comma-separated list of "+\
-                   "calibrators [default=3C295,3C196]", default="3C295,"+\
-                   "3C196")
     opt.add_option('-r', '--demix', help="Comma-separated source list "+\
                    "to demix (valid options: CasA, CygA, TauA, VirA) "+\
                    "[no default]", default='')
@@ -260,7 +290,7 @@ if __name__ == '__main__':
 
     # Validate user input
     pointing.validateInput()
-
+    
     # Open the output file
     outFile = open(options.output, 'w')
 
@@ -269,15 +299,23 @@ if __name__ == '__main__':
 
     # Write first calibrator block
     startTime = pointing.startTime
-    startTime = pointing.writeCalibrator(startTime, pointing.calibrators[0],\
-                outFile)
+    try:
+        calName = pointing.findCalibrator(startTime)
+    except:
+        raise IOError('A suitable flux calibrator could not be found.')
+    print 'INFO: Using {} as flux calibrator'.format(calName)
+    startTime = pointing.writeCalibrator(startTime, calName, outFile)
 
     # Generate target block
     startTime = pointing.writeTarget(startTime, outFile)
 
     # Write second calibrator block
-    startTime = pointing.writeCalibrator(startTime, pointing.calibrators[1],\
-                outFile)
+    try:
+        calName = pointing.findCalibrator(startTime)
+    except:
+        raise IOError('A suitable flux calibrator could not be found.')
+    print 'INFO: Using {} as flux calibrator'.format(calName)
+    startTime = pointing.writeCalibrator(startTime, calName, outFile)
 
     # Close the file
     outFile.close()
