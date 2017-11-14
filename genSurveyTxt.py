@@ -9,7 +9,8 @@ Version 0.1 written 13/11/2017 by Sarrvesh S. Sridhar
 """
 import optparse
 import datetime
-from dateutil.relativedelta import relativedelta
+from astropy.coordinates import SkyCoord
+import astropy.units as u
 
 def validateInput(options):
     """
@@ -34,6 +35,10 @@ def validateInput(options):
         raise IOError('Invalid date specified.')
     if options.calib == '':
         raise IOError('Calibrators must be specified.')
+    if options.avg != '4,1':
+        print 'INFO: You have chosen a different averaging than the '+\
+              'survey. Only the target will be averaged to the '+\
+              'specified setup.'
     calList = options.calib.split(',')
     if len(calList) != 2:
         raise IOError('You must specify two bookend calibrators.')
@@ -60,17 +65,79 @@ def makeHeader(projectName, mainFolderName, outFile):
     outFile.write('mainFolderDescription=Preprocessing:HBA Dual Inner,'+\
                   ' 110-190MHz, 8bits, 48MHz@144MHz, 1s, 64ch/sb\n\n')
 
-def writeCalibrator(dateStr, calibName, avgStr, commonStr, outFile):
+def writeCalibrator(dateStr, calibName, avgStr, startTime, \
+                    commonStr, outFile):
+    """
+    Write the calibrator section
+    """
     outFile.write('BLOCK\n\n')
     outFile.write('packageName={}\n'.format(calibName))
-    #outFile.write('startTimeUTC=\n')
+    outFile.write('startTimeUTC={}\n'.format(startTime.isoformat(' ')))
     outFile.write('targetDuration_s=600\n')
     outFile.write(commonStr+'\n')
     outFile.write('targetBeams=\n')
     outFile.write('{};{};;;;;T;1800\n'.format(getCalPointing(calibName),\
                   calibName))
-    outFile.write('Demix={};64;10;;;F\n'.format(avgStr.replace(',',';')))
+    outFile.write('Demix=4;1;64;10;;;F\n')
     outFile.write('\n')
+
+    # Return the start time for the next block
+    return startTime + datetime.timedelta(minutes=11)
+
+def writeTarget(point1, point2, avg, aTeamSources, startTime, obsLength, outFile):
+    """
+    Write the target block.
+    """
+    outFile.write('BLOCK\n\n')
+    outFile.write('packageName={}-{}\n'.format(point1.split(',')[0],
+                                               point2.split(',')[0]))
+    outFile.write('startTimeUTC={}\n'.format(startTime.isoformat(' ')))
+    outFile.write('targetDuration_s={}\n'.format(int(obsLength*3600.)))
+    outFile.write(commonStr+'\n')
+    outFile.write('targetBeams=\n')
+    # Compute the tile beam reference
+    point1Coord = SkyCoord('{} {}'.format(point1.split(',')[1], \
+                           point1.split(',')[2]), \
+                           unit=(u.hourangle, u.deg))
+    point2Coord = SkyCoord('{} {}'.format(point2.split(',')[1], \
+                           point2.split(',')[2]), \
+                           unit=(u.hourangle, u.deg))
+    refCoord = getTileBeam(point1Coord, point2Coord)
+    # Write the tile beam
+    outFile.write('{};REF;256;1;;;F;31200\n'\
+                  .format(refCoord.to_string(style='hmsdms', sep=':')\
+                  .replace(' ', ';')))
+    # Write the user pointing
+    if aTeamSources == '':
+        demix = ''
+    else:
+        demix = '[{}]'.format(aTeamSources)
+        demix.replace(',', '')
+    outFile.write('{};{};;;;;T;31200\n'\
+                  .format(point1Coord.to_string(style='hmsdms', sep=':')\
+                  .replace(' ', ';'), point1.split(',')[0]))
+    outFile.write('Demix={};64;10;;{};F\n'.format(avg.replace(',', ';'), \
+                  demix))
+    # Write the tier-1 pointing
+    outFile.write('{};{};;;;;T;31200\n'\
+                  .format(point2Coord.to_string(style='hmsdms', sep=':')\
+                  .replace(' ', ';'), point2.split(',')[0]))
+    outFile.write('Demix=4;1;64;10;;;F\n')
+    outFile.write('\n')
+    # Return the start time for the next block
+    return startTime + datetime.timedelta(hours=obsLength, minutes=1)
+
+def getTileBeam(point1Coord, point2Coord):
+    """
+    Compute the midpoint between the two pointings for the tile beam.
+    Note that midpoint on the sky for large angular separation is
+    ill-defined. In our case, it is almost always within ~7 degrees and so
+    this function should be fine. For more details, see
+    https://github.com/astropy/astropy/issues/5766
+    """
+    tempRA = (point1Coord.ra.degree + point2Coord.ra.degree)/2.
+    tempDec = (point1Coord.dec.degree + point2Coord.dec.degree)/2.
+    return SkyCoord(tempRA, tempDec, unit=u.deg)
 
 def getCalPointing(calName):
     return {
@@ -90,9 +157,9 @@ if __name__ == '__main__':
     opt.add_option('-m', '--main_name', help='Main folder name '+\
                    '[no default]', default='')
     opt.add_option('-d', '--date', help='Observation time in '+\
-                   'yyyy-mm-dd hh:mm:ss format [no default]', default='')
-    opt.add_option('-t', '--time', help='Length of the observation '+\
-                   '(4|8 hours) [default: 8 hours]', default='8')
+                   'yyyy-mm-dd-hh-mm-ss format [no default]', default='')
+    opt.add_option('-t', '--time', help='Length of the target observation '+\
+                   'in hours [default: 8 hours]', default='8')
     opt.add_option('-a', '--avg', help='Comma-separated freq and time '+\
                    'averaging factors [default=4,1]', default='4,1')
     opt.add_option('-x', '--point1', help='First beam info as '+\
@@ -127,31 +194,36 @@ if __name__ == '__main__':
                 "242..255,257..273,275..300,302..328,330..347,349,364,372,"\
                 "380,388,396,404,413,421,430,438,447;243\n"\
                 "timeStep1=60\ntimeStep2=60"
-    
+
     # Valid user input
     validateInput(options)
-    
+
     # Extract user info
     calibs = options.calib.split(',')
 
-    # Find suitable calibrators
-    #findCalibrators(options)
-    
+    # Make the start time object
+    dy, dm, ds, th, tm, ts = options.date.split('-')
+    startTime = datetime.datetime(int(dy), int(dm), int(ds), \
+                                  int(th), int(tm), int(ts))
+
     # Open the output file
     outFile = open(options.output, 'w')
-    
+
     # Write the header section
     makeHeader(options.project, options.main_name, outFile)
 
     # Write first calibrator block
-    writeCalibrator(options.date, calibs[0], options.avg, commonStr, outFile)
-
-    # Find the tile beam pointing
+    startTime = writeCalibrator(options.date, calibs[0], options.avg, \
+                                startTime, commonStr, outFile)
 
     # Generate target block
+    startTime = writeTarget(options.point1, options.point2, options.avg, \
+                            options.demix, startTime, \
+                            float(options.time), outFile)
 
     # Write second calibrator block
-    writeCalibrator(options.date, calibs[1], options.avg, commonStr, outFile)
+    startTime = writeCalibrator(options.date, calibs[1], options.avg, \
+                                startTime, commonStr, outFile)
     
     # Close the file
     outFile.close()
