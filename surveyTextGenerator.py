@@ -9,10 +9,18 @@ Version 0.1 written 14/11/2017 by Sarrvesh S. Sridhar
 """
 import optparse
 import datetime
-from astropy.coordinates import SkyCoord
-import astropy.units as u
-from ephem import Observer, FixedBody, degrees
+try:
+    from astropy.coordinates import SkyCoord
+    import astropy.units as u
+except ImportError:
+    raise Exception('\nError: Astropy module not found. Install with'+\
+                    ' "pip install astropy --user" for example')
 import numpy as np
+try:
+    from ephem import Observer, FixedBody, degrees
+except ImportError:
+    raise Exception('\nError: Ephem module not found. Install with'+\
+                    ' "pip install ephem --user" for example')
 
 class pointingInfo(object):
     """
@@ -23,7 +31,6 @@ class pointingInfo(object):
         mainName:        Main folder name.
         startTime:       Start time of the observing block.
         targetObsLength: Length of the target scan.
-        calibrators:     Names of the bookend calibrators.
         aTeamSources:    Sources that need to be demixed.
         elevation:       Minimum source elevation.
         avg:             Freq and time averaging parameters.
@@ -31,6 +38,7 @@ class pointingInfo(object):
         namePoint2:      Name of the second target beam.
         coordPoint1:     RA, Dec of the first target beam.
         coordPoint2:     RA, Dec of the second target beam.
+        validCals:       List of valid flux density calibrators
     """
     # pylint: disable=too-many-instance-attributes
     def __init__(self, options):
