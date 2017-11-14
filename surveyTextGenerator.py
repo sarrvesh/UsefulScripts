@@ -17,7 +17,7 @@ except ImportError:
                     ' "pip install astropy --user" for example')
 import numpy as np
 try:
-    from ephem import Observer, FixedBody, degrees
+    from ephem import Observer, FixedBody, degrees, separation, Sun
 except ImportError:
     raise Exception('\nError: Ephem module not found. Install with'+\
                     ' "pip install ephem --user" for example')
@@ -101,6 +101,7 @@ class pointingInfo(object):
         self.validateNames()
         self.validateDemix()
         self.validatePointings()
+        self.distanceToSun()
 
     def validatePointings(self):
         """
@@ -108,7 +109,7 @@ class pointingInfo(object):
         """
         if self.coordPoint1.separation(self.coordPoint2).deg > 8.:
             raise IOError('Angular separation between the two target '+\
-                          'beams is more than 10 degrees.')
+                          'beams is more than 8 degrees.')
 
     def validateNames(self):
         """
@@ -253,6 +254,34 @@ class pointingInfo(object):
                 calName.append(item)
                 distance.append(np.absolute(tempElevation-targetElevation))
         return calName[np.argmin(distance)]
+
+    def distanceToSun(self):
+        """
+        Find the distance between the Sun and the target pointings
+        """
+        lofar = Observer()
+        lofar.lon = '6.869882'
+        lofar.lat = '52.915129'
+        lofar.elevation = 15.*u.m
+        lofar.date = self.startTime
+        
+        # Create Sun object
+        sun = Sun()
+        sun.compute(lofar)
+        
+        # Create the target object
+        target = FixedBody()
+        target._epoch = '2000'
+        target._ra = self.coordPoint1.ra.radian
+        target._dec = self.coordPoint1.dec.radian
+        target.compute(lofar)
+        print 'INFO: Sun is {:0.2f} degrees away from {}'.format(\
+              float(separation(target, sun))*180./np.pi, self.namePoint1)
+        target._ra = self.coordPoint2.ra.radian
+        target._dec = self.coordPoint2.dec.radian
+        target.compute(lofar)
+        print 'INFO: Sun is {:0.2f} degrees away from {}'.format(\
+              float(separation(target, sun))*180./np.pi, self.namePoint2)
         
 def getCalPointing(calName):
     """
