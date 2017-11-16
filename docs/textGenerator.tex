@@ -1,0 +1,44 @@
+\documentclass[a4paper,11pt]{article}
+
+\usepackage[top=1cm]{geometry}
+\usepackage{hyperref}
+
+\title{Semi-automated Tier-1 text generator}
+\begin{document}
+\maketitle
+\section*{What does the code do?}
+For a given set of inputs (like pointing, observation start time), the python script generates a text file that can then be converted into XML using xmlgen.py. The script automatically identifies two suitable bookend calibrators. You can find a list of possible user input below. 
+
+\noindent\textbf{Python dependencies:} AstroPy\footnote{\url{www.astropy.org}}, ephem\footnote{\url{https://pypi.python.org/pypi/pyephem/}}
+
+\section*{Input options}
+The code takes in the following inputs:
+\begin{itemize}
+\item -p -- Project name (no default).
+\item -m -- Main folder name (no default).
+\item -d -- Starting date and time of the observing block (no default).
+\item -t -- Length of the target scan. Target scan length defaults to 8 hours. Calibrator scan length is set to 10 minutes by default.
+\item -a -- Frequency and time averaging parameters [default: 4,1].
+\item -e -- Minimum elevation to use while choosing a calibrator [default: 20 degrees]
+\item -x -- Pointing information for target beam 1 (no default). Format: \{name\},\{ra (hms)\},\{dec (dms)\} 
+\item -y -- Pointing information for target beam 2 (no default). Format: same as above.
+\item -r -- A-team sources to demix (Default: nothing to demix).
+\item -o -- Name of the output text file.
+\end{itemize}
+
+Flux density calibrators are chosen based on their elevation at the time of observation. If multiple calibrators are visible, the script chooses the nearest calibrator. Available calibrators are 3C295, 3C196, 3C48, 3C147, 3C380.
+
+\section*{Example 1: Co-observing setup}
+I have a cycle 9 co-observing proposal (LC9\_035) where the PI asks a different averaging than the Tier-1 setup. The source to be observed is NGC~7027 and the tier-1 pointing is P321+46. The PI wants to demix CygA and average his/her data to 8ch5s. The project is scheduled for Jan 30 starting at 8:00 UT. So, I would run the python script as
+
+\vspace{0.5cm}
+
+\texttt{\
+./surveyTextGenerator.py -p LC9\_035 -m NGC7027-P321+46 -d 2018-01-30-08-00-00 -t 8 -a 8,5 -x NGC7027,21:07:01.75,42:14:10.0 -y P321+46,21:24:56.425,45:39:04.424 -r CygA -o LC9\_035.txt
+}
+
+\vspace{0.5cm}
+
+The code internally computes the tile beam pointing, the appropriate startTimeUTC values for each block, and the bookend flux density calibrators.
+
+\end{document}

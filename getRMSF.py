@@ -74,7 +74,7 @@ def main(options):
     plt.xlabel('Faraday depth [rad/m^2]')
     plt.ylabel('RMSF')
     plt.legend()
-    plt.show()
+    plt.savefig('rmsf.png')
 
 if __name__ == '__main__':
     opt = optparse.OptionParser()

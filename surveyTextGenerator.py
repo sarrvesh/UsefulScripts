@@ -22,7 +22,7 @@ except ImportError:
     raise Exception('\nError: Ephem module not found. Install with'+\
                     ' "pip install ephem --user" for example')
 
-class pointingInfo(object):
+class PointingInfo(object):
     """
     Everything about a pointing is retained in this class.
 
@@ -323,7 +323,7 @@ if __name__ == '__main__':
     options, args = opt.parse_args()
 
     # Extract user info
-    pointing = pointingInfo(options)
+    pointing = PointingInfo(options)
 
     # Validate user input
     pointing.validateInput()
