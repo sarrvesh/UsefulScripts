@@ -10,7 +10,6 @@ Written by Sarrvesh S. Sridhar
 """
 import optparse
 import glob
-import pyvo as vo
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 import sys
@@ -20,21 +19,22 @@ def main(options):
     calList = options.cal.split(',')
     
     # Resolve the target
-    try: t = vo.object2pos(options.target, db='NED')
+    print options.target
+    try: t = SkyCoord.from_name(options.target)
     except:
        print 'Unable to query the target. Terminating execution'
        sys.exit(1)
-    target = SkyCoord(ra=t[0]*u.degree, dec=t[1]*u.degree)
-    print "\nTarget: {} ({} {})\n".format(options.target, t[0], t[1])
+    target = t
+    print "\nTarget: {} ({} {})\n".format(options.target, t.ra, t.dec)
     print "Calibrator\tDistance from target"
     print "==========\t===================="
     
     for cal in calList:
-        try: c = vo.object2pos(cal)
+        try: c = SkyCoord.from_name(cal)
         except: 
             print 'Unable to resolve target {}'.format(cal)
             continue
-        calib = SkyCoord(ra=c[0]*u.degree, dec=c[1]*u.degree)
+        calib = c
         distance = target.separation(calib)
         print "{}\t{}".format(cal, distance)
 
